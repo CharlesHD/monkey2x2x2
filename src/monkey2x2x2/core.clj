@@ -1,4 +1,6 @@
-(ns monkey2x2x2.core)
+(ns monkey2x2x2.core
+  (:gen-class)
+  (:require [seesaw.core :as gui]))
 ;;         ___bleu__
 ;;         | a1 a2 |
 ;;         | a3 a4 |
@@ -167,12 +169,12 @@
      (same-face :f1 :f2 :f3 :f4))))
 
 (def operations
-  ['L 'L' 'L2 'U 'U' 'U2 'F 'F' 'F2])
+  [L L' L2 U U' U2 F F' F2])
 
 (def allowed-moves
-  (let [lop ['L 'L' 'L2]
-        uop ['U 'U' 'U2]
-        fop ['F 'F' 'F2]]
+  (let [lop [L L' L2]
+        uop [U U' U2]
+        fop [F F' F2]]
     (as-> {} n
         (reduce #(assoc %1 %2 (concat uop fop)) n lop)
         (reduce #(assoc %1 %2 (concat lop fop)) n uop)
@@ -194,7 +196,7 @@
      (let [opsym (if (empty? prec-ops)
                (random-op)
                (random-op (first prec-ops)))
-           op (eval opsym)]
+           op opsym]
       (recur (eval-mapping op c) (cons opsym prec-ops) (dec n))))))
 
 (defn monkey-solve
@@ -205,5 +207,41 @@
         (let [opsym (if (empty? prec-ops)
                       (random-op)
                       (random-op (first prec-ops)))
-              op (eval opsym)]
+              op opsym]
           (recur (eval-mapping op c) (cons opsym prec-ops))))))
+
+(defn results
+  [ncubes]
+  (let [c (->> (repeat ncubes 100)
+               (map (partial random-cube 11))
+               (map :cube)
+               (pmap monkey-solve))
+        mmax (apply max c)
+        mmin (apply min c)
+        average (float (/ (reduce + c) (count c)))]
+    {:min mmin :max mmax :avg average}))
+
+(defn -main
+  []
+  (gui/native!)
+  (let [f (gui/frame :title "monkey2x2x2" :on-close :exit)
+        lb (gui/listbox :model (range 1 30))
+        b (gui/button :text "Vas-y le singe !")]
+    (gui/config! f :content
+                 (gui/left-right-split
+                  lb b :divider-location 1/3))
+    (gui/listen b :action
+                (fn [e]
+                  (let [v (gui/value lb)]
+                    (if (nil? v)
+                      (gui/alert e "Oook Oook ! (Il me faut un nombre de cubes à résoudre !)")
+                      (let [{mi :min
+                             ma :max
+                             avg :avg}
+                            (results v)]
+                        (gui/alert e
+                                   (str
+                                    "Ook ! min: " mi"\n"
+                                    "Ook ! max:" ma"\n"
+                                    "Ook ! avg:" avg"\n")))))))
+    (-> f gui/pack! gui/show!)))
